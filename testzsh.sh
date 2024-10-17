@@ -1,48 +1,56 @@
 #!/bin/bash
 
-# Vérifier si l'utilisateur est root
+# Vérification des droits root
 if [ "$EUID" -ne 0 ]; then
-  echo "Veuillez exécuter ce script en tant que root (ou utilisez sudo)." 
-  exit
+  echo "Veuillez exécuter ce script en tant que root."
+  exit 1
 fi
 
-# Mettre à jour les paquets
-echo "Mise à jour des paquets..."
+# Mise à jour du système
+echo "Mise à jour du système..."
 pacman -Syu --noconfirm
 
-# Installer Zsh
+# Installation de Zsh
 echo "Installation de Zsh..."
 pacman -S zsh --noconfirm
 
 # Définir Zsh comme shell par défaut
 echo "Définir Zsh comme shell par défaut..."
-chsh -s $(which zsh)
+chsh -s /bin/zsh
 
-# Installer Zinit
-echo "Installation de Zinit..."
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/zdharma-continuum/zinit/master/doc/install.sh)"
+# Installation de git si non installé (nécessaire pour Oh My Zsh)
+if ! command -v git &> /dev/null; then
+    echo "Git n'est pas installé, installation de git..."
+    pacman -S git --noconfirm
+fi
 
-# Cloner le thème Powerlevel10k
-echo "Installation du thème Powerlevel10k..."
-git clone --depth=1 https://github.com/romkatv/powerlevel10k.git ${ZDOTDIR:-$HOME}/.zsh/powerlevel10k
+# Installation de curl si non installé (nécessaire pour installer Oh My Zsh)
+if ! command -v curl &> /dev/null; then
+    echo "Curl n'est pas installé, installation de curl..."
+    pacman -S curl --noconfirm
+fi
 
-# Ajouter Powerlevel10k et Zinit à .zshrc
-echo "Configuration de Zsh..."
-cat << 'EOF' >> ~/.zshrc
+# Installation de Oh My Zsh
+echo "Installation de Oh My Zsh..."
+sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" || echo "Oh My Zsh est déjà installé."
 
-# Source Zinit
-source ~/.zshrc
+# Vérifier si le fichier .zshrc existe, sinon le créer
+if [ ! -f "$HOME/.zshrc" ]; then
+    echo "Le fichier .zshrc n'existe pas, création d'un nouveau .zshrc..."
+    cp ~/.oh-my-zsh/templates/zshrc.zsh-template ~/.zshrc
+fi
 
-# Installer et charger des plugins avec Zinit
-zinit light romkatv/powerlevel10k
-zinit light zdharma-continuum/fast-syntax-highlighting
-zinit light zsh-users/zsh-autosuggestions
+# Installation de Powerlevel10k
+echo "Installation de Powerlevel10k..."
+git clone --depth=1 https://github.com/romkatv/powerlevel10k.git ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k
 
-# Charger le thème Powerlevel10k
-[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
-EOF
+# Configuration du thème Powerlevel10k dans le fichier .zshrc
+echo "Configuration de Powerlevel10k comme thème..."
+sed -i 's/ZSH_THEME=".*"/ZSH_THEME="powerlevel10k\/powerlevel10k"/' ~/.zshrc
 
-# Relancer Zsh pour que les changements prennent effet
-exec zsh
+# Installation des polices recommandées pour Powerlevel10k (nerd fonts)
+echo "Installation des polices Nerd Fonts..."
+pacman -S ttf-meslo-nerd-font-powerlevel10k --noconfirm
 
-echo "Installation terminée ! Redémarrez le terminal ou exécutez 'exec zsh'."
+# Fin du script
+echo "Installation terminée. Veuillez redémarrer votre terminal ou exécuter 'zsh' pour appliquer les changements."
